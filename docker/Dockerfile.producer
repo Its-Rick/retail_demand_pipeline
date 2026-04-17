@@ -1,0 +1,19 @@
+# Dockerfile.producer
+# Runs the Kafka e-commerce event producer
+FROM python:3.10-slim
+
+WORKDIR /app
+
+RUN pip install --no-cache-dir kafka-python==2.0.2 faker==22.2.0 python-dotenv==1.0.0
+
+COPY kafka/producer/ecommerce_producer.py ./kafka/producer/
+COPY data/sample/ ./data/sample/
+COPY scripts/generate_sample_data.py ./scripts/
+
+# Generate sample data if not present
+RUN python scripts/generate_sample_data.py || true
+
+ENV KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+ENV PYTHONUNBUFFERED=1
+
+CMD ["python", "kafka/producer/ecommerce_producer.py", "--rate", "5"]

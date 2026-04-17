@@ -1,0 +1,52 @@
+# monitoring/prometheus.yml
+# Prometheus scrape configuration for the Retail Demand Pipeline
+
+global:
+  scrape_interval:     15s
+  evaluation_interval: 15s
+  external_labels:
+    pipeline: retail_demand
+    env:      development
+
+# ── SCRAPE JOBS ───────────────────────────────────────────────────────────────
+
+scrape_configs:
+
+  # Pipeline custom metrics (textfile collector output from monitoring.py)
+  - job_name: retail_pipeline
+    static_configs:
+      - targets: ["host.docker.internal:9100"]
+    metrics_path: /metrics
+    file_sd_configs:
+      - files:
+          - /metrics/pipeline_metrics.prom
+        refresh_interval: 30s
+
+  # Kafka broker metrics
+  - job_name: kafka
+    static_configs:
+      - targets: ["kafka-exporter:9308"]
+    scrape_interval: 30s
+
+  # PostgreSQL metrics
+  - job_name: postgresql
+    static_configs:
+      - targets: ["postgres-exporter:9187"]
+    scrape_interval: 30s
+
+  # Airflow webserver (exposes basic metrics at /metrics when statsd_exporter is configured)
+  - job_name: airflow
+    static_configs:
+      - targets: ["airflow-webserver:8080"]
+    metrics_path: /metrics
+    scrape_interval: 60s
+
+  # Prometheus self-monitoring
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+
+# ── ALERTING RULES ────────────────────────────────────────────────────────────
+# (Reference rules file — create monitoring/alert_rules.yml)
+rule_files:
+  - "alert_rules.yml"

@@ -1,0 +1,82 @@
+# =============================================================================
+# .gitignore — Retail Demand Forecasting Pipeline
+# =============================================================================
+
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+.Python
+env/
+venv/
+.venv/
+pip-wheel-metadata/
+
+# ── Testing ───────────────────────────────────────────────────────────────────
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+*.cover
+coverage.xml
+nosetests.xml
+
+# ── Data files (never commit data) ───────────────────────────────────────────
+data/raw/
+data/processed/
+# Keep sample data (small, used in tests)
+!data/sample/
+!data/sample/*.csv
+!data/sample/*.json
+
+# ── Logs ──────────────────────────────────────────────────────────────────────
+logs/
+*.log
+*.jsonl
+*.prom
+
+# ── Secrets / environment ─────────────────────────────────────────────────────
+.env
+*.pem
+*.key
+secrets/
+
+# ── Airflow ───────────────────────────────────────────────────────────────────
+airflow/logs/
+airflow/plugins/__pycache__/
+standalone_admin_password.txt
+airflow.db
+airflow.cfg
+webserver_config.py
+
+# ── Spark ─────────────────────────────────────────────────────────────────────
+spark-warehouse/
+metastore_db/
+derby.log
+*.checkpoint/
+
+# ── Docker ────────────────────────────────────────────────────────────────────
+# (keep Dockerfiles and docker-compose.yml, ignore volumes)
+
+# ── IDEs ─────────────────────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# ── Parquet / Arrow ───────────────────────────────────────────────────────────
+*.parquet
+*.arrow
+*.feather
+
+# ── Jupyter ───────────────────────────────────────────────────────────────────
+.ipynb_checkpoints/
+*.ipynb

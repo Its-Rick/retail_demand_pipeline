@@ -1,0 +1,78 @@
+# =============================================================================
+# docker-compose.monitoring.yml
+# Optional monitoring stack: Prometheus + Grafana
+#
+# Usage (add to main stack):
+#   docker-compose -f docker/docker-compose.yml \
+#                  -f docker/docker-compose.monitoring.yml up -d
+# =============================================================================
+
+version: "3.9"
+
+services:
+
+  # ── PROMETHEUS ──────────────────────────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:v2.47.0
+    container_name: retail_prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=15d"
+    restart: unless-stopped
+
+  # ── GRAFANA ─────────────────────────────────────────────────────────────────
+  grafana:
+    image: grafana/grafana:10.1.0
+    container_name: retail_grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/pipeline.json
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana_dashboards:/var/lib/grafana/dashboards
+      - ./monitoring/grafana_datasources:/etc/grafana/provisioning/datasources
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+  # ── KAFKA EXPORTER (exposes Kafka metrics to Prometheus) ──────────────────
+  kafka-exporter:
+    image: danielqsj/kafka-exporter:v1.7.0
+    container_name: retail_kafka_exporter
+    command:
+      - "--kafka.server=kafka:9092"
+    ports:
+      - "9308:9308"
+    depends_on:
+      - kafka
+    restart: unless-stopped
+
+  # ── POSTGRES EXPORTER ────────────────────────────────────────────────────
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.15.0
+    container_name: retail_pg_exporter
+    environment:
+      DATA_SOURCE_NAME: "postgresql://airflow:airflow@postgres:5432/retail_dw?sslmode=disable"
+    ports:
+      - "9187:9187"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
+volumes:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  default:
+    name: retail_pipeline_net
+    external: true

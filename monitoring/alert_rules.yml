@@ -1,0 +1,88 @@
+# monitoring/alert_rules.yml
+# Prometheus alerting rules for the Retail Demand Pipeline
+
+groups:
+
+  - name: pipeline_health
+    interval: 1m
+    rules:
+
+      # ── KAFKA ──────────────────────────────────────────────────────────────
+
+      - alert: KafkaConsumerLagHigh
+        expr: kafka_consumergroup_lag{consumergroup="retail-demand-pipeline"} > 10000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Kafka consumer lag is too high"
+          description: "Consumer group retail-demand-pipeline has lag > 10k for 5+ minutes. Events may be delayed."
+
+      - alert: KafkaBrokerDown
+        expr: up{job="kafka"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Kafka broker is down"
+          description: "Kafka broker has been unreachable for 1 minute. Streaming pipeline is halted."
+
+      # ── POSTGRESQL ─────────────────────────────────────────────────────────
+
+      - alert: PostgresDown
+        expr: up{job="postgresql"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "PostgreSQL is down"
+          description: "PostgreSQL data warehouse is unreachable. All pipeline writes are failing."
+
+      - alert: PostgresConnectionsHigh
+        expr: pg_stat_activity_count > 90
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "PostgreSQL connection count is high"
+          description: "Active connections {{ $value }} approaching max_connections limit."
+
+      # ── PIPELINE METRICS ───────────────────────────────────────────────────
+
+      - alert: PipelineETLFailed
+        expr: retail_pipeline_status{pipeline="pos_etl"} == 0
+        for: 0m
+        labels:
+          severity: critical
+        annotations:
+          summary: "POS ETL pipeline failed"
+          description: "The POS ETL pipeline returned a failure status. Check Airflow logs."
+
+      - alert: PipelineETLSlow
+        expr: retail_pipeline_elapsed_sec{pipeline="pos_etl"} > 3600
+        for: 0m
+        labels:
+          severity: warning
+        annotations:
+          summary: "POS ETL is taking too long"
+          description: "POS ETL took {{ $value }}s (> 1 hour). Check Spark cluster resources."
+
+      - alert: DQCheckFailed
+        expr: retail_pipeline_status{pipeline="dq_checks"} == 0
+        for: 0m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Data quality check failed"
+          description: "One or more DQ checks failed. Check dq_check_log table for details."
+
+      # ── DISK SPACE ─────────────────────────────────────────────────────────
+
+      - alert: DataLakeDiskLow
+        expr: node_filesystem_avail_bytes{mountpoint="/data"} / node_filesystem_size_bytes < 0.10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Data lake disk space below 10%"
+          description: "Less than 10% disk space remaining for Data Lake at /data."
