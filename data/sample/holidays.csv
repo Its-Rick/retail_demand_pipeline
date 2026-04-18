@@ -1,0 +1,20 @@
+date,holiday_name,is_federal
+2023-01-01,New Year's Day,True
+2023-01-16,Martin Luther King Day,True
+2023-02-14,Valentine's Day,False
+2023-02-20,Presidents' Day,True
+2023-03-17,St. Patrick's Day,False
+2023-05-14,Mother's Day,False
+2023-05-29,Memorial Day,True
+2023-06-18,Father's Day,False
+2023-07-04,Independence Day,True
+2023-09-04,Labor Day,True
+2023-10-09,Columbus Day,True
+2023-10-31,Halloween,False
+2023-11-11,Veterans Day,True
+2023-11-23,Thanksgiving,True
+2023-11-24,Black Friday,False
+2023-11-27,Cyber Monday,False
+2023-12-24,Christmas Eve,False
+2023-12-25,Christmas Day,True
+2023-12-31,New Year's Eve,False

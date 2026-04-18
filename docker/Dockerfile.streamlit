@@ -1,0 +1,22 @@
+FROM python:3.10-slim
+
+WORKDIR /app
+
+RUN pip install --no-cache-dir \
+    streamlit==1.31.0 \
+    plotly==5.18.0 \
+    pandas==2.1.4 \
+    numpy==1.26.3 \
+    psycopg2-binary==2.9.9 \
+    python-dotenv==1.0.0
+
+# context is project root, so paths are relative to root
+COPY streamlit/ ./streamlit/
+COPY data/sample/ ./data/sample/
+
+EXPOSE 8501
+
+CMD ["streamlit", "run", "streamlit/dashboard.py", \
+     "--server.port=8501", \
+     "--server.address=0.0.0.0", \
+     "--server.headless=true"]
