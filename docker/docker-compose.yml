@@ -4,7 +4,10 @@
 # =============================================================================
 
 x-airflow-common: &airflow-common
-  image: apache/airflow:2.8.1-python3.10
+  build:
+    context: ..
+    dockerfile: docker/Dockerfile.airflow
+  image: retail_airflow:2.8.1
   environment: &airflow-env
     AIRFLOW__CORE__EXECUTOR: LocalExecutor
     AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
@@ -43,14 +46,16 @@ services:
       POSTGRES_DB:       airflow
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ../sql/schema/create_db.sql:/docker-entrypoint-initdb.d/01_create_db.sql
       - ../sql/schema/star_schema.sql:/docker-entrypoint-initdb.d/02_star_schema.sql
     ports:
       - "5432:5432"
     healthcheck:
-      test: ["CMD", "pg_isready", "-U", "airflow"]
+      test: ["CMD-SHELL", "pg_isready -U airflow && psql -U airflow -c 'SELECT 1' -q > /dev/null 2>&1"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 20s
     restart: unless-stopped
 
   # ── Zookeeper ──────────────────────────────────────────────────────────────
@@ -96,6 +101,8 @@ services:
     restart: unless-stopped
 
   # ── Kafka topic setup ──────────────────────────────────────────────────────
+  # FIX 2: All args on ONE line — YAML '>' folds newlines to spaces,
+  # breaking --bootstrap-server into a separate word. Use '|' + single line.
   kafka-setup:
     image: confluentinc/cp-kafka:7.5.3
     container_name: retail_kafka_setup
@@ -107,20 +114,12 @@ services:
     restart: on-failure
 
   # ── Airflow init ───────────────────────────────────────────────────────────
+  # FIX 3: airflow users create args on ONE line — same YAML folding bug
   airflow-init:
     <<: *airflow-common
     container_name: retail_airflow_init
-    command: >
-      bash -c "
-        airflow db migrate &&
-        airflow users create
-          --username admin
-          --firstname Admin
-          --lastname User
-          --role Admin
-          --email admin@retail.com
-          --password admin
-      "
+    command: |
+      bash -c "airflow db migrate && airflow users create --username admin --firstname Admin --lastname User --role Admin --email admin@retail.com --password admin"
     restart: on-failure
 
   # ── Airflow webserver ──────────────────────────────────────────────────────
@@ -190,6 +189,7 @@ services:
     restart: unless-stopped
 
   # ── Kafka producer ─────────────────────────────────────────────────────────
+  # FIX 4: Added restart: on-failure so it retries if Kafka isn't ready yet
   kafka-producer:
     build:
       context: ..
@@ -202,9 +202,10 @@ services:
         condition: service_completed_successfully
     volumes:
       - ../data:/app/data
-    restart: unless-stopped
+    restart: on-failure
 
   # ── Kafka consumer ─────────────────────────────────────────────────────────
+  # FIX 5: Added restart: on-failure for same reason
   kafka-consumer:
     build:
       context: ..
@@ -221,7 +222,7 @@ services:
         condition: service_completed_successfully
     volumes:
       - ../data:/app/data
-    restart: unless-stopped
+    restart: on-failure
 
   # ── Streamlit dashboard ────────────────────────────────────────────────────
   streamlit:

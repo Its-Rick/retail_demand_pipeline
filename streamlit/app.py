@@ -70,7 +70,10 @@ if page == "📊 Analytics Dashboard":
         os.path.join(os.path.dirname(__file__), "dashboard.py")
     )
     # Just run dashboard.py inline for simplicity
-    exec(open(os.path.join(os.path.dirname(__file__), "dashboard.py")).read())
+    import sys, os
+    sys.path.insert(0, os.path.dirname(__file__))
+    import dashboard
+    dashboard 
 
 elif page == "🔮 Demand Forecasting":
     from streamlit.forecasting import render

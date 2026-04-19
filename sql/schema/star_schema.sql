@@ -3,8 +3,8 @@
 -- Retail Demand Forecasting — Data Warehouse Star Schema
 -- =============================================================================
 -- NOTE: This file is mounted as a PostgreSQL init script.
---       It runs inside the POSTGRES_DB database (airflow).
---       The warehouse schema is created here — no separate DB needed.
+--       01_create_db.sql creates retail_dw first.
+--       This script connects to retail_dw and builds the warehouse schema.
 --
 -- Schema layout:
 --              dim_time ─────────────────────┐
@@ -12,7 +12,10 @@
 --              dim_store ────────────────────┘
 -- =============================================================================
 
--- Create the warehouse schema inside the airflow database
+-- Connect to retail_dw (created by 01_create_db.sql)
+\connect retail_dw
+
+-- Create the warehouse schema inside retail_dw
 CREATE SCHEMA IF NOT EXISTS warehouse;
 SET search_path = warehouse;
 
@@ -140,6 +143,8 @@ CREATE INDEX IF NOT EXISTS idx_fact_sales_time    ON fact_sales(time_key);
 CREATE INDEX IF NOT EXISTS idx_fact_sales_product ON fact_sales(product_key);
 CREATE INDEX IF NOT EXISTS idx_fact_sales_store   ON fact_sales(store_key);
 CREATE INDEX IF NOT EXISTS idx_fact_sales_txn     ON fact_sales(transaction_id);
+-- Required for ON CONFLICT DO NOTHING in batch_ingestion_dag.py
+CREATE UNIQUE INDEX IF NOT EXISTS idx_fact_sales_txn_unique ON fact_sales(transaction_id);
 
 -- ─── AGGREGATION: DAILY DEMAND ────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS agg_daily_demand (

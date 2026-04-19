@@ -86,20 +86,28 @@ def load_data():
             ORDER BY year DESC, week_of_year DESC
         """, conn)
 
-        top_products = pd.read_sql("""
-            SELECT product_id, product_name, category, month_num, year,
-                   units_sold, revenue, revenue_rank
-            FROM warehouse.v_top_products_monthly
-            WHERE revenue_rank <= 10
-            ORDER BY year DESC, month_num DESC, revenue_rank
-            LIMIT 100
-        """, conn)
+        # top_products from agg_daily_demand (v_top_products_monthly needs fact_sales loaded)
+        try:
+            top_products = pd.read_sql("""
+                SELECT product_id, category,
+                       SUM(total_quantity) AS units_sold,
+                       SUM(total_revenue)  AS revenue
+                FROM warehouse.agg_daily_demand
+                GROUP BY product_id, category
+                ORDER BY revenue DESC
+                LIMIT 100
+            """, conn)
+        except Exception:
+            top_products = pd.DataFrame(columns=["product_id","category","units_sold","revenue"])
 
         conn.close()
+        if daily_demand.empty:
+            raise Exception("No data in agg_daily_demand — falling back to demo")
         return daily_demand, weekly_demand, top_products, "live"
 
     except Exception:
-        return _generate_demo_data(), "demo"
+        daily, weekly, products = _generate_demo_data()
+        return daily, weekly, products, "demo"
 
 
 def _generate_demo_data():
@@ -153,12 +161,7 @@ with st.sidebar:
     st.title("Retail Demand\nForecasting")
     st.markdown("---")
 
-    result = load_data()
-    if len(result) == 3:
-        daily_df, weekly_df, products_df = result
-        mode = "demo"
-    else:
-        daily_df, weekly_df, products_df, mode = result
+    daily_df, weekly_df, products_df, mode = load_data()
 
     st.markdown(f"**Data Mode:** {'🟢 Live DB' if mode == 'live' else '🟡 Demo Mode'}")
     st.markdown("---")
@@ -272,7 +275,7 @@ daily_agg["rolling_30d"] = daily_agg["units"].rolling(30, min_periods=1).mean()
 fig_trend = go.Figure()
 fig_trend.add_trace(go.Bar(
     x=daily_agg["agg_date"], y=daily_agg["units"],
-    name="Daily Units", marker_color="#0077b670", showlegend=True
+    name="Daily Units", marker_color="rgba(0,119,182,0.44)", showlegend=True
 ))
 fig_trend.add_trace(go.Scatter(
     x=daily_agg["agg_date"], y=daily_agg["rolling_7d"],
@@ -286,7 +289,7 @@ fig_trend.update_layout(
     template="plotly_dark", height=350,
     plot_bgcolor="#16213e", paper_bgcolor="#16213e",
     legend=dict(orientation="h", y=1.1),
-    xaxis=dict(showgrid=False), yaxis=dict(showgrid=True, gridcolor="#ffffff15")
+    xaxis=dict(showgrid=False), yaxis=dict(showgrid=True, gridcolor="rgba(255,255,255,0.08)")
 )
 st.plotly_chart(fig_trend, use_container_width=True)
 
